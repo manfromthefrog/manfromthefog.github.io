@@ -47,7 +47,7 @@
             margin-bottom: 20px;
         }
 
-        .level-form label, .level-form input, .level-form select {
+        .level-form label, .level-form input {
             display: block;
             margin: 5px 0;
             width: 100%;
@@ -64,14 +64,12 @@
             margin-bottom: 10px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
         }
 
-        .level-thumbnail {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-right: 15px;
+        .level-info {
+            flex-grow: 1;
+            margin-right: 10px;
         }
 
         .button {
@@ -87,6 +85,18 @@
         .button:hover {
             background-color: #ffba00;
         }
+
+        .thumbnail {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .rank {
+            width: 40px;
+            text-align: center;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -94,7 +104,7 @@
     <h1 class="texture-text">GDPSVN Demonlist</h1>
 
     <div class="feedback-info">
-        Feedback và send level qua email: <b>krazyman190@gmail.com</b>
+        Feedback qua email: <b>krazyman190@gmail.com</b> | Gửi level qua email
     </div>
 
     <div class="container">
@@ -105,18 +115,14 @@
             <input type="text" id="level-name" placeholder="Nhập tên level">
             <label for="level-author">Tác Giả</label>
             <input type="text" id="level-author" placeholder="Nhập tên tác giả">
-            <label for="level-video">Video Showcase (URL)</label>
-            <input type="text" id="level-video" placeholder="Nhập URL video">
             <label for="level-difficulty">Độ Khó</label>
-            <select id="level-difficulty">
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-                <option value="Insane">Insane</option>
-                <option value="Extreme">Extreme</option>
-            </select>
-            <label for="level-thumbnail">Thumbnail</label>
+            <input type="text" id="level-difficulty" placeholder="Nhập độ khó">
+            <label for="level-video">Video Showcase (URL hoặc tải lên)</label>
+            <input type="text" id="level-video" placeholder="Nhập URL video">
+            <label for="level-thumbnail">Thumbnail Level (Tải lên)</label>
             <input type="file" id="level-thumbnail" accept="image/*">
+            <label for="level-rank">Xếp Hạng</label>
+            <input type="number" id="level-rank" min="1" max="150" placeholder="Nhập xếp hạng (1-150)">
             <button class="button" onclick="addLevel()">Thêm Level</button>
         </div>
 
@@ -133,17 +139,22 @@
         function displayLevels() {
             const container = document.getElementById("levels-container");
             container.innerHTML = '';
-            levels.forEach((level, index) => {
+            // Sắp xếp level theo thứ tự
+            levels.sort((a, b) => a.rank - b.rank);
+            levels.forEach(level => {
                 container.innerHTML += `
                     <div class="level-item">
-                        <img src="${level.thumbnail}" class="level-thumbnail" alt="Thumbnail">
-                        <div>
-                            <h3>Top ${index + 1}: ${level.name}</h3>
+                        <div class="level-info">
+                            <span class="rank">#${level.rank}</span>
+                            <h3>${level.name}</h3>
                             <p><b>Tác Giả:</b> ${level.author}</p>
                             <p><b>Độ Khó:</b> ${level.difficulty}</p>
                             ${level.video ? `<p><a href="${level.video}" target="_blank">Xem Video</a></p>` : ""}
-                            <button class="button" onclick="editLevel(${index})">Chỉnh Sửa</button>
-                            <button class="button" onclick="deleteLevel(${index})">Xóa</button>
+                            ${level.thumbnail ? `<img src="${level.thumbnail}" alt="Thumbnail" class="thumbnail">` : ""}
+                        </div>
+                        <div>
+                            <button class="button" onclick="editLevel(${level.rank})">Chỉnh Sửa</button>
+                            <button class="button" onclick="deleteLevel(${level.rank})">Xóa</button>
                         </div>
                     </div>
                 `;
@@ -153,46 +164,55 @@
         function addLevel() {
             const name = document.getElementById("level-name").value;
             const author = document.getElementById("level-author").value;
-            const video = document.getElementById("level-video").value;
             const difficulty = document.getElementById("level-difficulty").value;
-            const thumbnailInput = document.getElementById("level-thumbnail");
+            const video = document.getElementById("level-video").value;
+            const thumbnail = document.getElementById("level-thumbnail").files[0];
+            const rank = parseInt(document.getElementById("level-rank").value);
 
-            if (name && author && difficulty && thumbnailInput.files.length > 0) {
+            if (name && author && difficulty && rank >= 1 && rank <= 150) {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    const thumbnail = event.target.result;
-                    levels.push({ name, author, video, difficulty, thumbnail });
+                reader.onload = function (e) {
+                    levels.push({ name, author, difficulty, video, thumbnail: e.target.result, rank });
                     displayLevels();
-                    document.getElementById("level-name").value = '';
-                    document.getElementById("level-author").value = '';
-                    document.getElementById("level-video").value = '';
-                    document.getElementById("level-difficulty").value = 'Easy';
-                    thumbnailInput.value = '';
+                    clearForm();
                 };
-                reader.readAsDataURL(thumbnailInput.files[0]);
+                if (thumbnail) {
+                    reader.readAsDataURL(thumbnail);
+                } else {
+                    levels.push({ name, author, difficulty, video, thumbnail: null, rank });
+                    displayLevels();
+                    clearForm();
+                }
             } else {
-                alert("Vui lòng nhập đầy đủ thông tin và chọn ảnh thumbnail.");
+                alert("Vui lòng nhập đầy đủ thông tin và xếp hạng (1-150).");
             }
         }
 
-        function editLevel(index) {
-            const name = prompt("Nhập tên mới:", levels[index].name);
-            const author = prompt("Nhập tác giả mới:", levels[index].author);
-            const video = prompt("Nhập video URL mới:", levels[index].video);
-            const difficulty = prompt("Nhập độ khó mới:", levels[index].difficulty);
+        function clearForm() {
+            document.getElementById("level-name").value = '';
+            document.getElementById("level-author").value = '';
+            document.getElementById("level-difficulty").value = '';
+            document.getElementById("level-video").value = '';
+            document.getElementById("level-thumbnail").value = '';
+            document.getElementById("level-rank").value = '';
+        }
 
-            if (name && author && difficulty) {
-                levels[index].name = name;
-                levels[index].author = author;
-                levels[index].video = video;
-                levels[index].difficulty = difficulty;
-                displayLevels();
+        function editLevel(rank) {
+            const index = levels.findIndex(level => level.rank === rank);
+            if (index !== -1) {
+                const newRank = parseInt(prompt("Nhập xếp hạng mới:", levels[index].rank));
+                if (newRank >= 1 && newRank <= 150) {
+                    levels[index].rank = newRank;
+                    displayLevels();
+                } else {
+                    alert("Vui lòng nhập xếp hạng hợp lệ (1-150).");
+                }
             }
         }
 
-        function deleteLevel(index) {
+        function deleteLevel(rank) {
             if (confirm("Bạn có chắc muốn xóa level này?")) {
-                levels.splice(index, 1);
+                levels = levels.filter(level => level.rank !== rank);
                 displayLevels();
             }
         }
